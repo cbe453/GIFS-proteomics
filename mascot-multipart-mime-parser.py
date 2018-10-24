@@ -23,14 +23,21 @@ class peptide:
 		self.int_max = content[7][1]
 		self.num_vals = content[8][1]
 		self.num_used = content[9][1]
-		self.ions = content[10][1].split(",")
+		self.ions = content[10][1].strip().split(",")
 	
 	def toString(self):
 		print("Title: " + self.title + "\nRtInSeconds: " + self.rt_in_seconds + 
 			  "\nIndex: " + self.index + "\nCharge: " + self.charge + "\nMassMin: " + 
 			  self.mass_min + "\nMassMax: " + self.mass_max + "\nIntMin: " + self.int_min +
 			  "\nIntMax: " + self.int_max + "\nNumVals: " + self.num_vals + "\nNumUsed: " +
-			  self.num_used + "\nIons: " + str(self.ions) + "\n")
+			  self.num_used + "\nIons: " + str(self.ions))
+			  
+	def tabFormat(self):
+		return (self.title + "\t" + self.rt_in_seconds + 
+			  "\t" + self.index + "\t" + self.charge + "\t" + 
+			  self.mass_min + "\t" + self.mass_max + "\t" + self.int_min +
+			  "\t" + self.int_max + "\t" + self.num_vals + "\t" +
+			  self.num_used + "\t" + str(self.ions))
 
 
 def parse_xml(part):
@@ -77,21 +84,21 @@ def part_iterator(infile):
 			key, handler = choose_handler(name)
 		except KeyError as err:
 			print(err, file=sys.stderr)
-           
+
 		content = handler(part)
 
 		yield (key, name, content)
 
 def main(infile):
 	parts = part_iterator(infile)
-
+	
 	for i, (kind, name, content) in enumerate(parts, 1):
 		print(i, kind, name)
 		if kind == 'query':
 			#print(content)
-			if (content[0][0] == "title"):
-				new_peptide = peptide(content)
-				print(new_peptide.toString())
+			new_peptide = peptide(content)
+			print(new_peptide.tabFormat())
+				#sys.stdout.write(new_peptide.tabFormat())
 	return 0
 
 mime_parts = {'parameters': parse_key_value_pairs,
@@ -108,7 +115,6 @@ mime_parts = {'parameters': parse_key_value_pairs,
 
 if __name__ == '__main__':
     with open(sys.argv[1], 'r') as input:
-        
         sys.exit(main(input))
 
 
