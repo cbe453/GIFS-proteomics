@@ -26,7 +26,7 @@ class peptide:
 		self.ions = content[10][1].strip().split(",")
 	
 	def toString(self):
-		print("Title: " + self.title + "\nRtInSeconds: " + self.rt_in_seconds + 
+		return ("Title: " + self.title + "\nRtInSeconds: " + self.rt_in_seconds + 
 			  "\nIndex: " + self.index + "\nCharge: " + self.charge + "\nMassMin: " + 
 			  self.mass_min + "\nMassMax: " + self.mass_max + "\nIntMin: " + self.int_min +
 			  "\nIntMax: " + self.int_max + "\nNumVals: " + self.num_vals + "\nNumUsed: " +
@@ -91,15 +91,14 @@ def part_iterator(infile):
 
 def main(infile):
 	parts = part_iterator(infile)
-	
+	peptides = []
 	for i, (kind, name, content) in enumerate(parts, 1):
-		print(i, kind, name)
+		#print(i, kind, name)
 		if kind == 'query':
 			#print(content)
-			new_peptide = peptide(content)
-			print(new_peptide.tabFormat())
-				#sys.stdout.write(new_peptide.tabFormat())
-	return 0
+			peptides.append(peptide(content))
+			
+	return peptides
 
 mime_parts = {'parameters': parse_key_value_pairs,
                'masses' : parse_key_value_pairs,
@@ -115,6 +114,9 @@ mime_parts = {'parameters': parse_key_value_pairs,
 
 if __name__ == '__main__':
     with open(sys.argv[1], 'r') as input:
-        sys.exit(main(input))
+        peptides = main(input)
+        for pep in peptides:
+        	print(pep.tabFormat())
+        sys.exit(0)
 
 
