@@ -39,18 +39,24 @@ class ArgParser(_ArgParser):
 def main(ns):
 
    unprocessed = supported_formats[ns.format].DataFrame(ns.infile)
+   #filtered = mzid.filter("170712_UCD_K_batch1_TMT_F10_500ng_180min_ReZipTip_01_p.mzid", fdr=0.1)
    print(list(unprocessed.columns.values))
    seq = list(unprocessed['PeptideSequence'])
    mod = list(unprocessed['Modification'])
    assert(len(seq) == len(mod))
 
-   for k in range(len(seq)):
-       print(k, seq[k])
-       try:
-           for m in mod[k]:
-               print('\t', m)
-       except:
-           pass
+   #for k in range(len(seq)):
+       #print(k, seq[k])
+       #try:
+           #for m in mod[k]:
+               #print('\t', m)
+       #except:
+           #pass
+           
+   #for row in list(unprocessed.values):
+      #print(row)
+   #for k in list(unprocessed['accession']):
+       #print(k)
 
    return 0
 
@@ -63,5 +69,3 @@ if __name__ == '__main__':
        sys.exit(1)
 
    sys.exit(main(ns))
-
-
