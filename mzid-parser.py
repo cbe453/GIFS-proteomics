@@ -12,7 +12,7 @@ from pyteomics import mzxml
 from pyteomics import pepxml
 from pyteomics import tandem
 
-xmlns = {'mzIdentML': 'http://psidev.info/psi/pi/mzIdentML/1.1'}
+xmlns = {'mzIdentML': 'http://psidev.info/psi/pi/mzIdentML/1.0'}
 
 
 
@@ -39,8 +39,9 @@ class ArgParser(_ArgParser):
 def main(ns):
 
    unprocessed = supported_formats[ns.format].DataFrame(ns.infile)
-   #filtered = mzid.filter("170712_UCD_K_batch1_TMT_F10_500ng_180min_ReZipTip_01_p.mzid", fdr=0.1)
+   unprocessed.columns.values[2] = "mascot:expectation value"
    print(list(unprocessed.columns.values))
+   filtered = mzid.filter("170712_UCD_K_batch1_TMT_F10_500ng_180min_ReZipTip_01_p.mzid", fdr=0.1)
    seq = list(unprocessed['PeptideSequence'])
    mod = list(unprocessed['Modification'])
    assert(len(seq) == len(mod))
@@ -52,11 +53,14 @@ def main(ns):
                #print('\t', m)
        #except:
            #pass
-           
-   #for row in list(unprocessed.values):
-      #print(row)
-   #for k in list(unprocessed['accession']):
-       #print(k)
+    
+   key = "X!Tandem:expect"
+   i = 0
+   for row in list(unprocessed.values):
+      print(row)
+      
+   #print(row[key])
+   
 
    return 0
 
