@@ -39,9 +39,7 @@ class ArgParser(_ArgParser):
 def main(ns):
 
    unprocessed = supported_formats[ns.format].DataFrame(ns.infile)
-   unprocessed.columns.values[2] = "mascot:expectation value"
    print(list(unprocessed.columns.values))
-   filtered = mzid.filter("170712_UCD_K_batch1_TMT_F10_500ng_180min_ReZipTip_01_p.mzid", fdr=0.1)
    seq = list(unprocessed['PeptideSequence'])
    mod = list(unprocessed['Modification'])
    assert(len(seq) == len(mod))
@@ -53,15 +51,17 @@ def main(ns):
                #print('\t', m)
        #except:
            #pass
-    
-   key = "X!Tandem:expect"
-   i = 0
-   for row in list(unprocessed.values):
-      print(row)
-      
-   #print(row[key])
-   
 
+   prefix="DECOY"
+   scoreKey="X!Tandem:expect"
+   filtered = mzid.filter("170712_UCD_K_batch1_TMT_F10_500ng_180min_ReZipTip_01_p.mzid", retrieve_refs=True, fdr=0.01)
+   #print(filtered[2])
+
+   print(filtered[0])
+   for row in enumerate(filtered):
+      print(row)
+      print("--------------------------------------")
+   print(len(filtered))   
    return 0
 
 if __name__ == '__main__':
