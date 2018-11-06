@@ -9,8 +9,9 @@ import email
 
 import xml.etree.ElementTree as et
 
-import sys
+import sys, re
 
+
 class peptide:
 	def __init__(self, content):
 		self.title = content[0][1]
@@ -39,9 +40,20 @@ class peptide:
 			  "\t" + self.int_max + "\t" + self.num_vals + "\t" +
 			  self.num_used + "\t" + str(self.ions))
 
+def findRecur(root):
+    global indent
+    if (root.tag.title() == '{Http://Www.Unimod.Org/Xmlns/Schema/Unimod_2}Misc_Notes' and root.text != None):
+    	if (root.text != None and bool(re.search('Sixplex', root.text))):
+    		global masses
+    		masses = root.text.split(':')[1].split(' ')
+    		return
+    for elem in root.getchildren():
+        findRecur(elem)
 
 def parse_xml(part):
-	return et.fromstring(part.get_payload())
+	content = et.fromstring(part.get_payload())
+	findRecur(content)
+	return content
 
 def parse_key_value_pairs(part):
 	pairs = list()
@@ -92,13 +104,19 @@ def part_iterator(infile):
 def main(infile):
 	parts = part_iterator(infile)
 	peptides = []
+
 	for i, (kind, name, content) in enumerate(parts, 1):
 		#print(i, kind, name)
 		if kind == 'query':
-			#print(content)
+			print(content)
 			peptides.append(peptide(content))
-			
-	return peptides
+	
+	#print(masses)
+	
+	#for pep in peptides:
+		#print(pep.tabFormat())	
+	print(masses)	
+    
 
 mime_parts = {'parameters': parse_key_value_pairs,
                'masses' : parse_key_value_pairs,
@@ -114,9 +132,7 @@ mime_parts = {'parameters': parse_key_value_pairs,
 
 if __name__ == '__main__':
     with open(sys.argv[1], 'r') as input:
-        peptides = main(input)
-        for pep in peptides:
-        	print(pep.tabFormat())
+        main(input)
         sys.exit(0)
 
 
