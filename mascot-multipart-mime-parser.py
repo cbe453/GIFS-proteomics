@@ -90,15 +90,14 @@ def part_iterator(infile):
 			continue
 
 		assert(part.get_content_type() == 'application/x-mascot')
-
+		
 		name = part.get_param('name')
 		try: 
 			key, handler = choose_handler(name)
 		except KeyError as err:
 			print(err, file=sys.stderr)
-
+		
 		content = handler(part)
-
 		yield (key, name, content)
 
 def main(infile):
@@ -108,13 +107,11 @@ def main(infile):
 	for i, (kind, name, content) in enumerate(parts, 1):
 		#print(i, kind, name)
 		if kind == 'query':
-			print(content)
+			#print(content)
 			peptides.append(peptide(content))
 	
-	#print(masses)
-	
-	#for pep in peptides:
-		#print(pep.tabFormat())	
+	for pep in peptides:
+		print(pep.tabFormat())	
 	print(masses)	
     
 
@@ -132,7 +129,6 @@ mime_parts = {'parameters': parse_key_value_pairs,
 
 if __name__ == '__main__':
     with open(sys.argv[1], 'r') as input:
-        main(input)
-        sys.exit(0)
+        sys.exit(main(input))
 
 
