@@ -11,9 +11,11 @@ import xml.etree.ElementTree as et
 
 import sys, re
 
+from collections import defaultdict
 
 class peptide:
-	def __init__(self, content):
+	def __init__(self, content, name):
+		self.query_name = name
 		self.title = content[0][1]
 		self.rt_in_seconds = content[1][1]
 		self.index = content[2][1]
@@ -26,15 +28,18 @@ class peptide:
 		self.num_used = content[9][1]
 		self.ions = content[10][1].strip().split(",")
 	
+	def getIons(self):
+		return self.ions
+	
 	def toString(self):
-		return ("Title: " + self.title + "\nRtInSeconds: " + self.rt_in_seconds + 
+		return ("Query: " + self.query_name + "\nTitle: " + self.title + "\nRtInSeconds: " + self.rt_in_seconds + 
 			  "\nIndex: " + self.index + "\nCharge: " + self.charge + "\nMassMin: " + 
 			  self.mass_min + "\nMassMax: " + self.mass_max + "\nIntMin: " + self.int_min +
 			  "\nIntMax: " + self.int_max + "\nNumVals: " + self.num_vals + "\nNumUsed: " +
 			  self.num_used + "\nIons: " + str(self.ions))
 			  
 	def tabFormat(self):
-		return (self.title + "\t" + self.rt_in_seconds + 
+		return (self.query_name + "\t" + self.title + "\t" + self.rt_in_seconds + 
 			  "\t" + self.index + "\t" + self.charge + "\t" + 
 			  self.mass_min + "\t" + self.mass_max + "\t" + self.int_min +
 			  "\t" + self.int_max + "\t" + self.num_vals + "\t" +
@@ -103,18 +108,55 @@ def part_iterator(infile):
 def main(infile):
 	parts = part_iterator(infile)
 	peptides = []
-
+	matches = []
+	
 	for i, (kind, name, content) in enumerate(parts, 1):
 		#print(i, kind, name)
 		if kind == 'query':
-			#print(content)
-			peptides.append(peptide(content))
+			peptides.append(peptide(content, name))
+		elif kind == 'peptides':
+			for item in content:
+				matches.append(item)
+	
+	for i in range(len(masses)):
+		masses[i] = float(masses[i])
+	
+	tag_dict = defaultdict(list)
+	multi_tag_count = 0
+	
 	
 	for pep in peptides:
-		print(pep.tabFormat())	
-	print(masses)	
+		#print(pep.tabFormat())
+		tag_flag = False
+		delta_flag = False
+		tag_hits = set([])
+		for ion in pep.getIons():
+			#sys.stdout.write(ion)
+			ion_float = float(ion.split(':')[0])
+			ion_int = int(ion_float)
+			if (ion_int == 229):
+				delta_flag = True
+			for mass in masses:
+				if ((mass - 0.001) < ion_float < (mass + 0.001)):
+					tag_flag = True
+					tag_hits.add(int(mass))
+		
+		if tag_flag and delta_flag:
+			if len(tag_hits) > 1:
+				multi_tag_count += 1
+			for tag in tag_hits:
+				tag_dict[tag].append(pep)
+	
+	for key in tag_dict.keys():
+		for pep in tag_dict[key]:
+			print(str(key) + "\t" + pep.tabFormat())			 	
+	
+	print(masses)
+	print(multi_tag_count)
+	
+	#for item in matches:
+		#print(item)
     
-
 mime_parts = {'parameters': parse_key_value_pairs,
                'masses' : parse_key_value_pairs,
                'quantitation': parse_xml,
