@@ -107,16 +107,18 @@ def part_iterator(infile):
 
 def main(infile):
 	parts = part_iterator(infile)
-	peptides = []
+	peptides = defaultdict()
 	matches = []
 	
 	for i, (kind, name, content) in enumerate(parts, 1):
-		#print(i, kind, name)
 		if kind == 'query':
-			peptides.append(peptide(content, name))
+			trunc_name = re.sub('uery', '', name)
+			peptides[trunc_name] = peptide(content, trunc_name)
 		elif kind == 'peptides':
-			for item in content:
-				matches.append(item)
+			for key, item in content:
+				if (re.match('q[0-9]+_p[0-9]+$', key) and item != '-1' ):
+					matches.append(item)
+					print(key + "\t" +item)
 	
 	for i in range(len(masses)):
 		masses[i] = float(masses[i])
@@ -124,17 +126,16 @@ def main(infile):
 	tag_dict = defaultdict(list)
 	multi_tag_count = 0
 	
-	
-	for pep in peptides:
-		#print(pep.tabFormat())
+	for key in peptides.keys():
 		tag_flag = False
 		delta_flag = False
 		tag_hits = set([])
-		for ion in pep.getIons():
-			#sys.stdout.write(ion)
+		
+		for ion in peptides[key].getIons():
 			ion_float = float(ion.split(':')[0])
+			ion_count = int(float(ion.split(':')[1]))
 			ion_int = int(ion_float)
-			if (ion_int == 229):
+			if (ion_int == 229 and ion_count > 1000):
 				delta_flag = True
 			for mass in masses:
 				if ((mass - 0.001) < ion_float < (mass + 0.001)):
@@ -145,7 +146,7 @@ def main(infile):
 			if len(tag_hits) > 1:
 				multi_tag_count += 1
 			for tag in tag_hits:
-				tag_dict[tag].append(pep)
+				tag_dict[tag].append(peptides[key])
 	
 	for key in tag_dict.keys():
 		for pep in tag_dict[key]:
