@@ -12,41 +12,11 @@ import xml.etree.ElementTree as et
 import sys, re
 
 from collections import defaultdict
+from peptide import peptide
 
-class peptide:
-	def __init__(self, content, name):
-		self.query_name = name
-		self.title = content[0][1]
-		self.rt_in_seconds = content[1][1]
-		self.index = content[2][1]
-		self.charge = content[3][1]
-		self.mass_min = content[4][1]
-		self.mass_max = content[5][1]
-		self.int_min = content[6][1]
-		self.int_max = content[7][1]
-		self.num_vals = content[8][1]
-		self.num_used = content[9][1]
-		self.ions = content[10][1].strip().split(",")
-		self.counts = {126: 0, 127: 0, 128: 0, 129: 0, 130:  0,
-						131: 0, 229: 0}
-	
-	def getIons(self):
-		return self.ions
-	
-	def toString(self):
-		return ("Query: " + self.query_name + "\nTitle: " + self.title + "\nRtInSeconds: " + self.rt_in_seconds + 
-			  "\nIndex: " + self.index + "\nCharge: " + self.charge + "\nMassMin: " + 
-			  self.mass_min + "\nMassMax: " + self.mass_max + "\nIntMin: " + self.int_min +
-			  "\nIntMax: " + self.int_max + "\nNumVals: " + self.num_vals + "\nNumUsed: " +
-			  self.num_used + "\nIons: " + str(self.ions))
-			  
-	def tabFormat(self):
-		return (self.query_name + "\t" + self.title + "\t" + self.rt_in_seconds + 
-			  "\t" + self.index + "\t" + self.charge + "\t" + 
-			  self.mass_min + "\t" + self.mass_max + "\t" + self.int_min +
-			  "\t" + self.int_max + "\t" + self.num_vals + "\t" +
-			  self.num_used + "\t" + str(self.ions) + "\t" + str(self.counts))
 
+# Probably unnecessarily complicated recursive method of extracting the secondary masses 
+#from the XML portion of the .dat file. It works
 def findRecur(root):
     global indent
     if (root.tag.title() == '{Http://Www.Unimod.Org/Xmlns/Schema/Unimod_2}Misc_Notes' and root.text != None):
@@ -112,6 +82,8 @@ def main(infile):
 	peptides = defaultdict()
 	matches = defaultdict(dict)
 	
+	# Iterate through input file and pull out relevant data. (mainly peptide information 
+	# query information as well as the mass tags outlined in the XML portion of the file)
 	for i, (kind, name, content) in enumerate(parts, 1):
 		if kind == 'query':
 			trunc_name = re.sub('uery', '', name)
@@ -119,31 +91,39 @@ def main(infile):
 			peptides[new_key] = peptide(content, trunc_name)
 		elif kind == 'peptides':
 			for key, item in content:
-				if (re.match('q[0-9]+_p1$', key) and item != '-1' ):
-					sequence = item.split(';')[0].split(',')[4]
-					#print(key + "\t" + str(item))
-					#print(sequence)
-					for protein in item.split(';')[1].split(','):
-						new_item = (key.split('_')[0] + "-" + str(infile.name))
-						if sequence in matches[protein.split(':')[0]]:
-							matches[protein.split(':')[0]][sequence].append(new_item)
-						else:
-							matches[protein.split(':')[0]][sequence] = [new_item]
+				# Two assumptions are made here. We are assuming that the first hit i.e. 'p1'
+				# reported by mascot is the top protein match. This prevents some 
+				# ambiguous cases. We also remove cases where a single peptide query
+				# matches both Cucumber and Watermelon as these cases are ambiguous. 
+				if (re.match('q[0-9]+_p1$', key) and item != '-1'):
+					if(re.search('Cla', item) and re.search('Csa', item)):
+						continue
+					else:
+						sequence = item.split(';')[0].split(',')[4]
+						for protein in item.split(';')[1].split(','):
+							#print(protein)
+							new_item = (key.split('_')[0] + "-" + str(infile.name))
+							if sequence in matches[protein.split(':')[0]]:
+								matches[protein.split(':')[0]][sequence].append(new_item)
+							else:
+								matches[protein.split(':')[0]][sequence] = [new_item]
 	
+	# Convert string bases masses to floats
 	for i in range(len(masses)):
 		masses[i] = float(masses[i])
 	
-	
+	# Iterate through the dictionary of dictionaries of lists  structured as 
+	# proteins -> sequences -> query_lists. Decoys are removed, proteins with fewer than
+	# 3 supporting queries are ignored. Prints out proteins, sequences, file names and 
+	# tag counts for proteins with more than 3 supporting queries along with the 229 isobaric
+	# mass tags and secondary masses
 	for protein in matches.keys():
 		if (re.match('\"DECOY', protein)):
 			continue
 		else:
 			if (sum(len(list) for list in matches[protein].values())) >= 3:
-				#print(protein + "\t" + str(matches[protein]))
 				for sequence in matches[protein].keys():
-					#print(protein + "\t" + sequence + "\t" + str(matches[protein][sequence]))
 					for query in matches[protein][sequence]:
-						print(protein + "\t" + sequence + "\t" + query)
 						cur_peptide = peptides[query]
 						primary_flag = False
 						
@@ -153,7 +133,6 @@ def main(infile):
 							ion_float = float(ion.split(':')[0])
 							
 							if (ion_int == 229):
-								print('HAHA')
 								primary_flag = True
 								cur_peptide.counts[229] = ion_count
 								continue
@@ -164,30 +143,7 @@ def main(infile):
 						if primary_flag:
 							print(protein + "\t" + query + "\t" + sequence
 								  + "\t" + str(cur_peptide.counts))
-										
-		
-		#for key in peptides.keys():
-			#tag_flag = False
-			#delta_flag = False
-			#tag_hits = set([])
-		
-			#for ion in peptides[key].getIons():
-				#ion_float = float(ion.split(':')[0])
-				#ion_count = int(float(ion.split(':')[1]))
-				#ion_int = int(ion_float)
-				#if (ion_int == 229): #and ion_count > 1000):
-					#delta_flag = True
-					#peptides[key].counts[ion_int] = ion_count
-				#for mass in masses:
-					#if ((mass - 0.001) < ion_float < (mass + 0.001)):
-						#tag_flag = True
-						#tag_hits.add(int(mass))
-						#peptides[key].counts[int(mass)] = ion_count
-		
-			#if tag_flag and delta_flag:
-				#for tag in tag_hits:
-					#print("match")
-					
+
 	print(masses)
     
 mime_parts = {'parameters': parse_key_value_pairs,
