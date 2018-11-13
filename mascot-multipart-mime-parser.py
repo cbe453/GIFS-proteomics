@@ -27,6 +27,8 @@ class peptide:
 		self.num_vals = content[8][1]
 		self.num_used = content[9][1]
 		self.ions = content[10][1].strip().split(",")
+		self.counts = {126: 0, 127: 0, 128: 0, 129: 0, 130:  0,
+						131: 0, 229: 0}
 	
 	def getIons(self):
 		return self.ions
@@ -43,7 +45,7 @@ class peptide:
 			  "\t" + self.index + "\t" + self.charge + "\t" + 
 			  self.mass_min + "\t" + self.mass_max + "\t" + self.int_min +
 			  "\t" + self.int_max + "\t" + self.num_vals + "\t" +
-			  self.num_used + "\t" + str(self.ions))
+			  self.num_used + "\t" + str(self.ions) + "\t" + str(self.counts))
 
 def findRecur(root):
     global indent
@@ -108,55 +110,85 @@ def part_iterator(infile):
 def main(infile):
 	parts = part_iterator(infile)
 	peptides = defaultdict()
-	matches = []
+	matches = defaultdict(dict)
 	
 	for i, (kind, name, content) in enumerate(parts, 1):
 		if kind == 'query':
 			trunc_name = re.sub('uery', '', name)
-			peptides[trunc_name] = peptide(content, trunc_name)
+			new_key = trunc_name + "-" + infile.name
+			peptides[new_key] = peptide(content, trunc_name)
 		elif kind == 'peptides':
 			for key, item in content:
-				if (re.match('q[0-9]+_p[0-9]+$', key) and item != '-1' ):
-					matches.append(item)
-					print(key + "\t" +item)
+				if (re.match('q[0-9]+_p1$', key) and item != '-1' ):
+					sequence = item.split(';')[0].split(',')[4]
+					#print(key + "\t" + str(item))
+					#print(sequence)
+					for protein in item.split(';')[1].split(','):
+						new_item = (key.split('_')[0] + "-" + str(infile.name))
+						if sequence in matches[protein.split(':')[0]]:
+							matches[protein.split(':')[0]][sequence].append(new_item)
+						else:
+							matches[protein.split(':')[0]][sequence] = [new_item]
 	
 	for i in range(len(masses)):
 		masses[i] = float(masses[i])
 	
-	tag_dict = defaultdict(list)
-	multi_tag_count = 0
 	
-	for key in peptides.keys():
-		tag_flag = False
-		delta_flag = False
-		tag_hits = set([])
+	for protein in matches.keys():
+		if (re.match('\"DECOY', protein)):
+			continue
+		else:
+			if (sum(len(list) for list in matches[protein].values())) >= 3:
+				#print(protein + "\t" + str(matches[protein]))
+				for sequence in matches[protein].keys():
+					#print(protein + "\t" + sequence + "\t" + str(matches[protein][sequence]))
+					for query in matches[protein][sequence]:
+						print(protein + "\t" + sequence + "\t" + query)
+						cur_peptide = peptides[query]
+						primary_flag = False
+						
+						for ion in cur_peptide.getIons():
+							ion_int = int(float(ion.split(':')[0]))
+							ion_count = int(float(ion.split(':')[1]))
+							ion_float = float(ion.split(':')[0])
+							
+							if (ion_int == 229):
+								print('HAHA')
+								primary_flag = True
+								cur_peptide.counts[229] = ion_count
+								continue
+							for mass in masses:
+								if ((mass - 0.001) < ion_float < (mass + 0.001)):
+									cur_peptide.counts[int(mass)] = ion_count
+						
+						if primary_flag:
+							print(protein + "\t" + query + "\t" + sequence
+								  + "\t" + str(cur_peptide.counts))
+										
 		
-		for ion in peptides[key].getIons():
-			ion_float = float(ion.split(':')[0])
-			ion_count = int(float(ion.split(':')[1]))
-			ion_int = int(ion_float)
-			if (ion_int == 229 and ion_count > 1000):
-				delta_flag = True
-			for mass in masses:
-				if ((mass - 0.001) < ion_float < (mass + 0.001)):
-					tag_flag = True
-					tag_hits.add(int(mass))
+		#for key in peptides.keys():
+			#tag_flag = False
+			#delta_flag = False
+			#tag_hits = set([])
 		
-		if tag_flag and delta_flag:
-			if len(tag_hits) > 1:
-				multi_tag_count += 1
-			for tag in tag_hits:
-				tag_dict[tag].append(peptides[key])
-	
-	for key in tag_dict.keys():
-		for pep in tag_dict[key]:
-			print(str(key) + "\t" + pep.tabFormat())			 	
-	
+			#for ion in peptides[key].getIons():
+				#ion_float = float(ion.split(':')[0])
+				#ion_count = int(float(ion.split(':')[1]))
+				#ion_int = int(ion_float)
+				#if (ion_int == 229): #and ion_count > 1000):
+					#delta_flag = True
+					#peptides[key].counts[ion_int] = ion_count
+				#for mass in masses:
+					#if ((mass - 0.001) < ion_float < (mass + 0.001)):
+						#tag_flag = True
+						#tag_hits.add(int(mass))
+						#peptides[key].counts[int(mass)] = ion_count
+		
+			#if tag_flag and delta_flag:
+				#for tag in tag_hits:
+					#print("match")
+					
 	print(masses)
-	print(multi_tag_count)
-	
-	#for item in matches:
-		#print(item)
     
 mime_parts = {'parameters': parse_key_value_pairs,
                'masses' : parse_key_value_pairs,
