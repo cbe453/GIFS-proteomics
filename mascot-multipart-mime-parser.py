@@ -86,8 +86,10 @@ def main():
 	matches = defaultdict(dict)
 	global found_masses 
 	found_masses = False
+	outfile = open(sys.argv[1], 'w')
+	outfile.write("Protein\tQuery-File\tSequence\t126\t127\t128\t129\t130\t131\t229\n")
 	
-	for file in sys.argv[1:]:
+	for file in sys.argv[2:]:
 		read_file = open(file, 'r')
 		parts = part_iterator(read_file)
 		file_basename = os.path.basename(file)
@@ -114,7 +116,8 @@ def main():
 							sequence = item.split(';')[0].split(',')[4]
 							for protein in item.split(';')[1].split(','):
 								new_item = (key.split('_')[0] + "-" + str(file_basename))
-								trunc_protein = re.sub('\.[0-9]+', '', protein)
+								temp_protein = re.sub('\.[0-9]+', '', protein)
+								trunc_protein = re.sub('\"', '', temp_protein)
 								if sequence in matches[trunc_protein.split(':')[0]]:
 									matches[trunc_protein.split(':')[0]][sequence].add(new_item)
 								else:
@@ -131,7 +134,7 @@ def main():
 	# tag counts for proteins with more than 3 supporting queries along with the 229 isobaric
 	# mass tags and secondary masses
 	for protein in matches.keys():
-		if (re.match('\"DECOY', protein)):
+		if (re.match('DECOY', protein)):
 			continue
 		else:
 			if (sum(len(list) for list in matches[protein].values())) >= 3:
@@ -156,6 +159,8 @@ def main():
 						if primary_flag:
 							print(protein + "\t" + query + "\t" + sequence
 								  + "\t" + str(cur_peptide.counts))
+							outfile.write(protein + "\t" + query + "\t" + sequence + "\t"
+								  + '\t'.join(str(x) for x in cur_peptide.counts.values()) + "\n")
     
 mime_parts = {'parameters': parse_key_value_pairs,
                'masses' : parse_key_value_pairs,
