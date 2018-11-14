@@ -88,6 +88,7 @@ def main():
 	found_masses = False
 	outfile = open(sys.argv[1], 'w')
 	outfile.write("Protein\tQuery-File\tSequence\t126\t127\t128\t129\t130\t131\t229\n")
+	debug = open('debug.out', 'w')
 	
 	for file in sys.argv[2:]:
 		read_file = open(file, 'r')
@@ -102,6 +103,7 @@ def main():
 			if kind == 'query':
 				trunc_name = re.sub('uery', '', name)
 				new_key = trunc_name + "-" + file_basename
+				debug.write(content + "\n")
 				peptides[new_key] = peptide(content, trunc_name)
 			elif kind == 'peptides':
 				for key, item in content:
