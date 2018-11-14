@@ -9,7 +9,7 @@ import email
 
 import xml.etree.ElementTree as et
 
-import sys, re
+import sys, re, os
 
 from collections import defaultdict
 from peptide import peptide
@@ -18,14 +18,17 @@ from peptide import peptide
 # Probably unnecessarily complicated recursive method of extracting the secondary masses 
 #from the XML portion of the .dat file. It works
 def findRecur(root):
-    global indent
-    if (root.tag.title() == '{Http://Www.Unimod.Org/Xmlns/Schema/Unimod_2}Misc_Notes' and root.text != None):
-    	if (root.text != None and bool(re.search('Sixplex', root.text))):
-    		global masses
-    		masses = root.text.split(':')[1].split(' ')
-    		return
-    for elem in root.getchildren():
-        findRecur(elem)
+	global found_masses
+	if found_masses:
+		return
+	if (root.tag.title() == '{Http://Www.Unimod.Org/Xmlns/Schema/Unimod_2}Misc_Notes' and root.text != None):
+		if (root.text != None and bool(re.search('Sixplex', root.text))):
+			global masses
+			masses = root.text.split(':')[1].split(' ')
+			found_masses = True
+			return
+	for elem in root.getchildren():
+		findRecur(elem)
 
 def parse_xml(part):
 	content = et.fromstring(part.get_payload())
@@ -77,37 +80,47 @@ def part_iterator(infile):
 		content = handler(part)
 		yield (key, name, content)
 
-def main(infile):
-	parts = part_iterator(infile)
+def main():
+
 	peptides = defaultdict()
 	matches = defaultdict(dict)
+	global found_masses 
+	found_masses = False
 	
-	# Iterate through input file and pull out relevant data. (mainly peptide information 
-	# query information as well as the mass tags outlined in the XML portion of the file)
-	for i, (kind, name, content) in enumerate(parts, 1):
-		if kind == 'query':
-			trunc_name = re.sub('uery', '', name)
-			new_key = trunc_name + "-" + infile.name
-			peptides[new_key] = peptide(content, trunc_name)
-		elif kind == 'peptides':
-			for key, item in content:
-				# Two assumptions are made here. We are assuming that the first hit i.e. 'p1'
-				# reported by mascot is the top protein match. This prevents some 
-				# ambiguous cases. We also remove cases where a single peptide query
-				# matches both Cucumber and Watermelon as these cases are ambiguous. 
-				if (re.match('q[0-9]+_p1$', key) and item != '-1'):
-					if(re.search('Cla', item) and re.search('Csa', item)):
-						continue
-					else:
-						sequence = item.split(';')[0].split(',')[4]
-						for protein in item.split(';')[1].split(','):
-							#print(protein)
-							new_item = (key.split('_')[0] + "-" + str(infile.name))
-							if sequence in matches[protein.split(':')[0]]:
-								matches[protein.split(':')[0]][sequence].append(new_item)
-							else:
-								matches[protein.split(':')[0]][sequence] = [new_item]
+	for file in sys.argv[1:]:
+		read_file = open(file, 'r')
+		parts = part_iterator(read_file)
+		file_basename = os.path.basename(file)
 	
+		# Iterate through input file and pull out relevant data. (mainly peptide information 
+		# query information as well as the mass tags outlined in the XML portion of the file)
+		# Isoforms that are matched in queries are collapsed down to a single entry in 
+		# the dictionary.
+		for i, (kind, name, content) in enumerate(parts, 1):
+			if kind == 'query':
+				trunc_name = re.sub('uery', '', name)
+				new_key = trunc_name + "-" + file_basename
+				peptides[new_key] = peptide(content, trunc_name)
+			elif kind == 'peptides':
+				for key, item in content:
+					# Two assumptions are made here. We are assuming that the first hit i.e. 'p1'
+					# reported by mascot is the top protein match. This prevents some 
+					# ambiguous cases. We also remove cases where a single peptide query
+					# matches both Cucumber and Watermelon as these cases are ambiguous. 
+					if (re.match('q[0-9]+_p1$', key) and item != '-1'):
+						if(re.search('Cla', item) and re.search('Csa', item)):
+							continue
+						else:
+							sequence = item.split(';')[0].split(',')[4]
+							for protein in item.split(';')[1].split(','):
+								new_item = (key.split('_')[0] + "-" + str(file_basename))
+								trunc_protein = re.sub('\.[0-9]+', '', protein)
+								if sequence in matches[trunc_protein.split(':')[0]]:
+									matches[trunc_protein.split(':')[0]][sequence].add(new_item)
+								else:
+									matches[trunc_protein.split(':')[0]][sequence] = set([new_item])
+		read_file.close()
+		
 	# Convert string bases masses to floats
 	for i in range(len(masses)):
 		masses[i] = float(masses[i])
@@ -143,8 +156,6 @@ def main(infile):
 						if primary_flag:
 							print(protein + "\t" + query + "\t" + sequence
 								  + "\t" + str(cur_peptide.counts))
-
-	print(masses)
     
 mime_parts = {'parameters': parse_key_value_pairs,
                'masses' : parse_key_value_pairs,
@@ -159,7 +170,6 @@ mime_parts = {'parameters': parse_key_value_pairs,
                'index': parse_key_value_pairs}
 
 if __name__ == '__main__':
-    with open(sys.argv[1], 'r') as input:
-        sys.exit(main(input))
+    sys.exit(main())
 
 
