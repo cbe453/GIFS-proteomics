@@ -104,7 +104,10 @@ def main():
 				trunc_name = re.sub('uery', '', name)
 				new_key = trunc_name + "-" + file_basename
 				debug.write(content + "\n")
-				peptides[new_key] = peptide(content, trunc_name)
+				if content[10] == None:
+					continue
+				else:
+					peptides[new_key] = peptide(content, trunc_name)
 			elif kind == 'peptides':
 				for key, item in content:
 					# Two assumptions are made here. We are assuming that the first hit i.e. 'p1'
