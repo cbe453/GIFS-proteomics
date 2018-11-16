@@ -104,7 +104,8 @@ def main():
 				trunc_name = re.sub('uery', '', name)
 				new_key = trunc_name + "-" + file_basename
 				debug.write(content + "\n")
-				if content[10] == None:
+				if len(content) < 11:
+					print(name + " from " + file_basename + " is missing content! Skipping this record...")
 					continue
 				else:
 					peptides[new_key] = peptide(content, trunc_name)
@@ -152,8 +153,8 @@ def main():
 							ion_int = int(float(ion.split(':')[0]))
 							ion_count = int(float(ion.split(':')[1]))
 							ion_float = float(ion.split(':')[0])
-							
-							if (ion_int == 229):
+
+							if (229.262 < ion_float < 229.264):
 								primary_flag = True
 								cur_peptide.counts[229] = ion_count
 								continue
@@ -162,8 +163,8 @@ def main():
 									cur_peptide.counts[int(mass)] = ion_count
 						
 						if primary_flag:
-							print(protein + "\t" + query + "\t" + sequence
-								  + "\t" + str(cur_peptide.counts))
+							#print(protein + "\t" + query + "\t" + sequence
+								  #+ "\t" + str(cur_peptide.counts))
 							outfile.write(protein + "\t" + query + "\t" + sequence + "\t"
 								  + '\t'.join(str(x) for x in cur_peptide.counts.values()) + "\n")
     
