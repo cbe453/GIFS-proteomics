@@ -154,7 +154,7 @@ def main():
 							ion_count = int(float(ion.split(':')[1]))
 							ion_float = float(ion.split(':')[0])
 
-							if (229.262 < ion_float < 229.264):
+							if (229 < ion_float < 229):
 								primary_flag = True
 								cur_peptide.counts[229] = ion_count
 								continue
