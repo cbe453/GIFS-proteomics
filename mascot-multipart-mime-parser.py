@@ -88,7 +88,7 @@ def main():
 	found_masses = False
 	outfile = open(sys.argv[1], 'w')
 	outfile.write("Protein\tQuery-File\tSequence\t126\t127\t128\t129\t130\t131\t229\n")
-	debug = open('debug.out', 'w')
+	#debug = open('debug.out', 'w')
 	
 	for file in sys.argv[2:]:
 		read_file = open(file, 'r')
@@ -103,7 +103,7 @@ def main():
 			if kind == 'query':
 				trunc_name = re.sub('uery', '', name)
 				new_key = trunc_name + "-" + file_basename
-				debug.write(content + "\n")
+				#debug.write(content + "\n")
 				if len(content) < 11:
 					print(name + " from " + file_basename + " is missing content! Skipping this record...")
 					continue
@@ -154,7 +154,7 @@ def main():
 							ion_count = int(float(ion.split(':')[1]))
 							ion_float = float(ion.split(':')[0])
 
-							if (229 < ion_float < 229):
+							if (ion_int == 229):
 								primary_flag = True
 								cur_peptide.counts[229] = ion_count
 								continue
@@ -167,6 +167,7 @@ def main():
 								  #+ "\t" + str(cur_peptide.counts))
 							outfile.write(protein + "\t" + query + "\t" + sequence + "\t"
 								  + '\t'.join(str(x) for x in cur_peptide.counts.values()) + "\n")
+	outfile.close()
     
 mime_parts = {'parameters': parse_key_value_pairs,
                'masses' : parse_key_value_pairs,
